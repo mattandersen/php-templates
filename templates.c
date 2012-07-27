@@ -48,7 +48,7 @@ extern PHPAPI int php_sock_close(int socket);
 int		le_templates;
 
 /* {{{ templates_functions[] */
-function_entry templates_functions[] = {
+zend_function_entry templates_functions[] = {
 	PHP_FE(tmpl_open,		NULL)
 	PHP_FE(tmpl_load,		NULL)
 	PHP_FE(tmpl_close,		NULL)
@@ -247,7 +247,8 @@ char	buf[TMPL_MAX_TAG_LEN*3];
 }
 
 PHP_FUNCTION(tmpl_open) {
-	zval			**filename, **delimiters = NULL;
+	zval			**delimiters = NULL;
+	char *filename; int filename_len;
 	t_template		*tmpl;
 	char			*buf;
 	size_t			buf_len=0;
@@ -259,24 +260,29 @@ PHP_FUNCTION(tmpl_open) {
 	int				issock=0, socketd=0;
 #endif
 
-	if(!(ZEND_NUM_ARGS() == 2 && zend_get_parameters_ex(2, &filename, &delimiters) == SUCCESS && Z_TYPE_PP(delimiters) == IS_ARRAY)
-	&& !(ZEND_NUM_ARGS() == 1 && zend_get_parameters_ex(1, &filename) == SUCCESS)) {
+	if ( ZEND_NUM_ARGS() == 2 && !(zend_parse_parameters( ZEND_NUM_ARGS() TSRMLS_DC, "sZ", &filename, &filename_len, delimiters) == SUCCESS && Z_TYPE_PP(delimiters) == IS_ARRAY) ) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
-	}
-		
+	} else if ( ZEND_NUM_ARGS() == 1 && SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "s", &filename, &filename_len) ) {
+		WRONG_PARAM_COUNT;
+		RETURN_FALSE;
+	} else if ( ZEND_NUM_ARGS() > 2 ) {
+		WRONG_PARAM_COUNT;
+		RETURN_FALSE;
+	};
+
 	/* load template */
-	convert_to_string_ex(filename);
+	//convert_to_string_ex(filename);
 
 	/* check for open base_dir restrictions */
-    if (php_check_open_basedir(Z_STRVAL_PP(filename) TSRMLS_CC)) {
+    if (php_check_open_basedir(filename TSRMLS_CC)) {
         RETURN_FALSE;
     }
 
 #ifdef TMPL_PHP_4_3
-	stream = php_stream_open_wrapper(Z_STRVAL_PP(filename), "rb", IGNORE_PATH|ENFORCE_SAFE_MODE|REPORT_ERRORS, NULL);
+	stream = php_stream_open_wrapper(filename, "rb", IGNORE_PATH|ENFORCE_SAFE_MODE|REPORT_ERRORS, NULL);
 	if(!stream) {
-		char	*tmp = estrndup(Z_STRVAL_PP(filename), Z_STRLEN_PP(filename));
+		char	*tmp = estrndup(filename, filename_len);
 		php_strip_url_passwd(tmp);
 		php_error(E_ERROR, "Can't open template \"%s\" - %s", tmp, strerror(errno));
 		efree(tmp);
@@ -288,10 +294,10 @@ PHP_FUNCTION(tmpl_open) {
 
 	if(0 == buf_len) buf = (char*)emalloc(1);
 #else
-	fp = php_fopen_wrapper(Z_STRVAL_PP(filename), "rb", ENFORCE_SAFE_MODE, &issock, &socketd, NULL TSRMLS_CC);
+	fp = php_fopen_wrapper(&filename, "rb", ENFORCE_SAFE_MODE, &issock, &socketd, NULL TSRMLS_CC);
 	if(!fp && !socketd) {
 		if(issock != BAD_URL) {
-			char	*tmp = estrndup(Z_STRVAL_PP(filename), Z_STRLEN_PP(filename));
+			char	*tmp = estrndup(filename, filename_len);
 			php_strip_url_passwd(tmp);
 			php_error(E_ERROR, "Can't open template \"%s\" - %s", tmp, strerror(errno));
 			efree(tmp);
@@ -309,7 +315,7 @@ PHP_FUNCTION(tmpl_open) {
 
 	buf[buf_len] = 0;
 
-	if(!(tmpl = php_tmpl_init(buf, buf_len, delimiters TSRMLS_CC))) { TMPL_OPEN_CLEANUP; RETURN_FALSE; }
+	if(!(tmpl = php_tmpl_init(buf, buf_len, (ZEND_NUM_ARGS() == 2) ? delimiters : NULL TSRMLS_CC))) { TMPL_OPEN_CLEANUP; RETURN_FALSE; }
 
 	/* Pre-parse template */
 	if(FAILURE == php_tmpl_pre_parse(tmpl)) { TMPL_OPEN_CLEANUP; RETURN_FALSE; }
@@ -321,27 +327,30 @@ PHP_FUNCTION(tmpl_open) {
 /* {{{ proto resource tmpl_load(string content [, array delimiters])
    Load template from string */
 PHP_FUNCTION(tmpl_load) {
-	zval			**content, **delimiters = NULL;
+	zval			**delimiters = NULL;
+	char *content; int content_len;
 	t_template		*tmpl;
 	char			*buf;
 
-	if(!(ZEND_NUM_ARGS() == 2 && zend_get_parameters_ex(2, &content, &delimiters) == SUCCESS && Z_TYPE_PP(delimiters) == IS_ARRAY)
-	&& !(ZEND_NUM_ARGS() == 1 && zend_get_parameters_ex(1, &content) == SUCCESS)) {
+
+	if(!(ZEND_NUM_ARGS() == 2 && zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC,"sz", &content, &content_len, &delimiters) == SUCCESS && Z_TYPE_PP(delimiters) == IS_ARRAY)
+	&& !(ZEND_NUM_ARGS() == 1 && zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "s", &content, &content_len)  == SUCCESS)) {
+
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
 
-	convert_to_string_ex(content);
+	// convert_to_string_ex(content);
 
-	if(Z_STRLEN_PP(content) < 1) {
+	if (content_len < 1) {
 		buf = (char*)emalloc(1);
 		buf[0] = 0;
 	} else {
-		buf = (char*)estrndup(Z_STRVAL_PP(content), Z_STRLEN_PP(content)+1);
-		buf[Z_STRLEN_PP(content)] = 0;
+		buf = (char*)estrndup(content, content_len+1);
+		buf[content_len] = 0;
 	}
 
-	tmpl = php_tmpl_init(buf, Z_STRLEN_PP(content), (2 == ZEND_NUM_ARGS()) ? delimiters : NULL TSRMLS_CC);
+	tmpl = php_tmpl_init(buf, content_len, (2 == ZEND_NUM_ARGS()) ? delimiters : NULL TSRMLS_CC);
 
 	/* Pre-parse template */
 	if(FAILURE == php_tmpl_pre_parse(tmpl)) { RETURN_FALSE; }
@@ -400,32 +409,32 @@ zval			*iteration;
 /* {{{ proto bool tmpl_set(resource id, string path, string value)
 	Assign value to the template tag addressed by path */
 PHP_FUNCTION(tmpl_set) {
-	zval		**id, **arg1, **arg2;
+	zval		*id, *arg2;
+	char *arg1; int arg1_len;
 	zval		*path, *inr_dest, *inr_path;
 	t_template	*tmpl, *inner_template;
 	char		*buf;
 
 	RETVAL_FALSE;
-	if(2 == ZEND_NUM_ARGS() && SUCCESS == zend_get_parameters_ex(2, &id, &arg1) && IS_ARRAY == Z_TYPE_PP(arg1)) {
+	if ( 2 == ZEND_NUM_ARGS() && SUCCESS == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "zz", &id, &arg2)) {
+		TMPL_GET_RESOURCE(tmpl, &id);
 
-		TMPL_GET_RESOURCE(tmpl, id);
+		if(SUCCESS == php_tmpl_set_array(tmpl, tmpl->path, &arg2 TSRMLS_CC)) { RETVAL_TRUE; }
 
-		if(SUCCESS == php_tmpl_set_array(tmpl, tmpl->path, arg1 TSRMLS_CC)) { RETVAL_TRUE; }
-
-	} else if(3 == ZEND_NUM_ARGS() && SUCCESS == zend_get_parameters_ex(3, &id, &arg1, &arg2)) {
-		convert_to_string_ex(arg1); 
-		TMPL_GET_RESOURCE(tmpl, id);
+	} else if ( 3 == ZEND_NUM_ARGS() && SUCCESS == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "zsz", &id, &arg1, &arg1_len, &arg2)) {
+		//convert_to_string_ex(arg1); 
+		TMPL_GET_RESOURCE(tmpl, &id);
 
 		MAKE_STD_ZVAL(path); ZVAL_EMPTY_STRING(path);
-		php_tmpl_load_path(&path, Z_STRVAL_PP(arg1), Z_STRLEN_PP(arg1), tmpl->path);
+		php_tmpl_load_path(&path, arg1, arg1_len, tmpl->path);
 
-		if(IS_ARRAY == Z_TYPE_PP(arg2)) {
+		if(IS_ARRAY == Z_TYPE_PP(&arg2)) {
 
-			if(SUCCESS == php_tmpl_set_array(tmpl, path, arg2 TSRMLS_CC)) { RETVAL_TRUE; }
+			if(SUCCESS == php_tmpl_set_array(tmpl, path, &arg2 TSRMLS_CC)) { RETVAL_TRUE; }
 
-		} else if (IS_RESOURCE == Z_TYPE_PP(arg2)) {
+		} else if (IS_RESOURCE == Z_TYPE_PP(&arg2)) {
 
-			if((inner_template = (t_template*)zend_list_find(Z_LVAL_PP(arg2), &le_templates)) != NULL) { 
+			if((inner_template = (t_template*)zend_list_find(Z_LVAL_PP(&arg2), &le_templates)) != NULL) { 
 
 				buf = (char*)emalloc(inner_template->size + 1);
 				MAKE_STD_ZVAL(inr_dest); ZVAL_STRINGL(inr_dest, buf, 0, 0);
@@ -443,7 +452,7 @@ PHP_FUNCTION(tmpl_set) {
 
 		} else {
 
-			if(SUCCESS == php_tmpl_set(tmpl, path, arg2)) { RETVAL_TRUE; }
+			if(SUCCESS == php_tmpl_set(tmpl, path, &arg2)) { RETVAL_TRUE; }
 
 		}
 
@@ -470,7 +479,7 @@ PHP_FUNCTION(tmpl_set_global) {
 	uint		key_tag_len;
 
 	RETVAL_FALSE;
-	if(3 != ZEND_NUM_ARGS() || SUCCESS != zend_get_parameters_ex(3, &id, &arg1, &arg2)) {
+	if ( 3 != ZEND_NUM_ARGS() || SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "zzz", &id, &arg1, &arg2) ) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -511,23 +520,24 @@ PHP_FUNCTION(tmpl_set_global) {
 /* {{{ proto string tmpl_parse(int id)
    Parse template and return template's content */
 PHP_FUNCTION(tmpl_parse) {
-	zval			**id, **arg1;
+	zval			*id;
+	char *arg1; int arg1_len;
 	t_template		*tmpl;
 	zval			*dest;
 	zval			*path;
 	zval			**ztag;
 	char			*buf;
 
-	if(ZEND_NUM_ARGS() == 2 && zend_get_parameters_ex(2, &id, &arg1) == SUCCESS) {
-		TMPL_GET_RESOURCE(tmpl, id);
-		convert_to_string_ex(arg1);
+	if (ZEND_NUM_ARGS() == 2 && SUCCESS == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "zs", &id, &arg1, arg1_len ) ) { 
+		TMPL_GET_RESOURCE(tmpl, &id);
+		// convert_to_string_ex(arg1);
 
 		MAKE_STD_ZVAL(path); ZVAL_EMPTY_STRING(path);
-		php_tmpl_load_path(&path, Z_STRVAL_PP(arg1), Z_STRLEN_PP(arg1), tmpl->path);
+		php_tmpl_load_path(&path, arg1, arg1_len, tmpl->path);
 		if(NULL == php_tmpl_get_iteration(tmpl, path, TMPL_ITERATION_CURRENT)) { RETURN_FALSE; }
 
-	} else if(ZEND_NUM_ARGS() == 1 && zend_get_parameters_ex(1, &id) == SUCCESS) {
-		TMPL_GET_RESOURCE(tmpl, id);
+	} else if (ZEND_NUM_ARGS() == 1 && SUCCESS == zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "z", &id)) {
+		TMPL_GET_RESOURCE(tmpl, &id);
 
 		MAKE_STD_ZVAL(path); ZVAL_STRINGL(path, "/", 1, 1);
 
@@ -559,8 +569,8 @@ PHP_FUNCTION(tmpl_iterate) {
 	zval		*real_path, **iteration;
 	t_template	*tmpl;
 
-	if(!(ZEND_NUM_ARGS() == 2 && zend_get_parameters_ex(2, &id, &path) == SUCCESS)
-	&& !(ZEND_NUM_ARGS() == 1 && zend_get_parameters_ex(1, &id) == SUCCESS)) {
+	if(!(ZEND_NUM_ARGS() == 2 && zend_parse_parameters(2 TSRMLS_DC, "zz", &id, &path) == SUCCESS)
+	&& !(ZEND_NUM_ARGS() == 1 && zend_parse_parameters(1 TSRMLS_DC, "z", &id) == SUCCESS)) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -588,7 +598,7 @@ PHP_FUNCTION(tmpl_iterate) {
 PHP_FUNCTION(tmpl_close) {
 	zval		**id;
 
-	if(ZEND_NUM_ARGS() != 1 || zend_get_parameters_ex(1, &id) != SUCCESS || IS_RESOURCE != Z_TYPE_PP(id)) {
+	if(ZEND_NUM_ARGS() != 1 || zend_parse_parameters(1 TSRMLS_DC, "z", &id) != SUCCESS || IS_RESOURCE != Z_TYPE_PP(id)) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -608,8 +618,8 @@ PHP_FUNCTION(tmpl_context) {
 	zval		*real_path, **ztag;
 	t_template	*tmpl;
 
-	if(!(ZEND_NUM_ARGS() == 2 && zend_get_parameters_ex(2, &id, &path) == SUCCESS)
-	&& !(ZEND_NUM_ARGS() == 1 && zend_get_parameters_ex(1, &id) == SUCCESS)) {
+	if(!(ZEND_NUM_ARGS() == 2 && zend_parse_parameters(2 TSRMLS_DC, "zz", &id, &path) == SUCCESS)
+	&& !(ZEND_NUM_ARGS() == 1 && zend_parse_parameters(1 TSRMLS_DC, "z", &id) == SUCCESS)) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -644,7 +654,7 @@ PHP_FUNCTION(tmpl_type_of) {
 	zval		*real_path, **ztag;
 	t_template	*tmpl;
 
-	if(!(2 == ZEND_NUM_ARGS() && SUCCESS == zend_get_parameters_ex(2, &id, &path))) {
+	if(!(2 == ZEND_NUM_ARGS() && SUCCESS == zend_parse_parameters(2 TSRMLS_DC, "zz", &id, &path))) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -672,8 +682,8 @@ PHP_FUNCTION(tmpl_get) {
 	t_template	*tmpl;
 	t_tmpl_tag	*tag;
 
-	if(!(2 == ZEND_NUM_ARGS() && SUCCESS == zend_get_parameters_ex(2, &id, &path))
-		&& !(1 == ZEND_NUM_ARGS() && SUCCESS == zend_get_parameters_ex(1, &id))) {
+	if(!(2 == ZEND_NUM_ARGS() && SUCCESS == zend_parse_parameters(2 TSRMLS_DC, "zz", &id, &path))
+		&& !(1 == ZEND_NUM_ARGS() && SUCCESS == zend_parse_parameters(1 TSRMLS_DC, "z", &id))) {
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
 	}
@@ -722,14 +732,7 @@ PHP_FUNCTION(tmpl_structure) {
 	MAKE_STD_ZVAL(real_path); ZVAL_EMPTY_STRING(real_path);
 	typ_mask = 0; typ_mod = 0;
 
-	if(
-		(4 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(4, &id, &path, &mask, &mod))
-		&&
-		(3 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(3, &id, &path, &mask))
-		&&
-		(2 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(2, &id, &path))
-		&&
-		(1 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(1, &id))		) {
+	if( SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "z|zzz", &id, &path, &mask, &mod) ) {
 		zval_dtor(real_path); FREE_ZVAL(real_path);
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;
@@ -782,10 +785,7 @@ PHP_FUNCTION(tmpl_unset) {
 
 	MAKE_STD_ZVAL(real_path); ZVAL_EMPTY_STRING(real_path);
 
-	if(
-		(2 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(2, &id, &path))
-		&&
-		(1 != ZEND_NUM_ARGS() || FAILURE == zend_get_parameters_ex(1, &id))		) {
+        if( SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_DC, "z|z", &id, &path) ) {
 		zval_dtor(real_path); FREE_ZVAL(real_path);
 		WRONG_PARAM_COUNT;
 		RETURN_FALSE;

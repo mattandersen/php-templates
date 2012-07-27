@@ -9,14 +9,17 @@ I started with the last release 1.7.2, and applied the FreeBSD ports patches, av
 
 The remainder of the changes I made to cope with the deprecation of zend_get_parameters_ex(), replacing it with zend_parse_parameters().
 
+Requirements
+============
+This should work with whatever release of php your Unix or Linux distribution comes with. You just need to have phpize.
+
 Installation
 ============
+From inside the repository:
 ```
-$ tar -zxf templates.tar.gz
-$ cd temlpates
 $ phpize
 $ ./configure --enable-templates=shared
 $ make
 $ make install
-$ Add extension=template.so in your php.ini
 ```
+Add extension=template.so in your php.ini and restart Apache if necessary.

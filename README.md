@@ -11,10 +11,12 @@ The remainder of the changes I made to cope with the deprecation of zend_get_par
 
 Installation
 ============
-- tar -zxf templates.tar.gz
-- cd temlpates
-- phpize
-- ./configure --enable-templates=shared
-- make
-- make install
-- Add extension=template.so in your php.ini
+```
+$ tar -zxf templates.tar.gz
+$ cd temlpates
+$ phpize
+$ ./configure --enable-templates=shared
+$ make
+$ make install
+$ Add extension=template.so in your php.ini
+```

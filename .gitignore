@@ -1,0 +1,8 @@
+*.gcno
+*.gcna
+*.o
+*.lo
+*.so
+*.a
+*.la
+.libs

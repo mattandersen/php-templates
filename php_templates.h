@@ -47,6 +47,10 @@ extern zend_module_entry templates_module_entry;
 #	define TMPL_PHP_4_3		1
 #endif
 
+#if PHP_API_VERSION >= 20041225
+#	define TMPL_PHP_5_2		1
+#endif
+
 #define TMPL_VERSION		"1.7.3"
 
 #define TMPL_CACHE_ENABLED	0

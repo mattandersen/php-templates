@@ -206,7 +206,7 @@ ZEND_BEGIN_MODULE_GLOBALS(templates)
 	char	*left, *right;
 	char	*ctx_ol, *ctx_or;
 	char	*ctx_cl, *ctx_cr;
-	bool	*ctx_eno;
+	bool	ctx_eno;
 	zval	*tmpl_param;
 ZEND_END_MODULE_GLOBALS(templates)
 

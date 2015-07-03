@@ -48,7 +48,11 @@ extern PHPAPI int php_sock_close(int socket);
 int		le_templates;
 
 /* {{{ templates_functions[] */
+#ifdef TMPL_PHP_5_2
 zend_function_entry templates_functions[] = {
+#else
+function_entry templates_functions[] = {
+#endif
 	PHP_FE(tmpl_open,		NULL)
 	PHP_FE(tmpl_load,		NULL)
 	PHP_FE(tmpl_close,		NULL)

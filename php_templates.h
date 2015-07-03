@@ -44,10 +44,13 @@ extern zend_module_entry templates_module_entry;
 #	define TMPL_PHP_4_3		1
 #endif
 
+#if PHP_API_VERSION >= 20041225
+#	define TMPL_PHP_5_2		1
+#endif
+
 #define TMPL_VERSION		"1.7.3"
 
 #define TMPL_CACHE_ENABLED	0
-
 
 #define TMPL_TAG_LEFT		"{"
 #define TMPL_TAG_RIGHT		"}"
@@ -62,22 +65,22 @@ extern zend_module_entry templates_module_entry;
 
 #define TMPL_CONFIG_TAG_NAME	"template"
 
-#define TMPL_UNDEFINED				0
-#define TMPL_TAG					1
-#define TMPL_CONTEXT				2
-#define TMPL_TAG_END				4
+#define TMPL_UNDEFINED			0
+#define TMPL_TAG			1
+#define TMPL_CONTEXT			2
+#define TMPL_TAG_END			4
 #define TMPL_CONTEXT_OPEN_LEFT		8
 #define TMPL_CONTEXT_OPEN_RIGHT		16
 #define TMPL_CONTEXT_CLOSE_LEFT		32
 #define TMPL_CONTEXT_CLOSE_RIGHT	64
-#define TMPL_CONFIG_TAG				128
+#define TMPL_CONFIG_TAG			128
 
 #define TMPL_LONG			1
 #define TMPL_SHORT			2
 #define TMPL_TREE			4
 
 #define TMPL_ITERATION_CURRENT	0
-#define TMPL_ITERATION_NEW		1
+#define TMPL_ITERATION_NEW	1
 #define TMPL_ITERATION_PARENT	2
 #define TMPL_ITERATION_EXISTING	4
 
@@ -200,7 +203,7 @@ ZEND_BEGIN_MODULE_GLOBALS(templates)
 	char	*left, *right;
 	char	*ctx_ol, *ctx_or;
 	char	*ctx_cl, *ctx_cr;
-	bool	*ctx_eno;
+	int	*ctx_eno;
 	zval	*tmpl_param;
 ZEND_END_MODULE_GLOBALS(templates)
 

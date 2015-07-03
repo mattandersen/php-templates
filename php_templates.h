@@ -29,6 +29,9 @@
 #define PHP_TEMPLATES_API
 #endif
 
+# For bool
+#include <stdbool.h>
+
 #ifdef ZTS
 #include "TSRM.h"
 #endif
@@ -42,10 +45,6 @@ extern zend_module_entry templates_module_entry;
 
 #if PHP_API_VERSION >= 20020918
 #	define TMPL_PHP_4_3		1
-#endif
-
-#if PHP_API_VERSION >= 20041225
-#	define TMPL_PHP_5_2		1
 #endif
 
 #define TMPL_VERSION		"1.7.3"
@@ -203,7 +202,7 @@ ZEND_BEGIN_MODULE_GLOBALS(templates)
 	char	*left, *right;
 	char	*ctx_ol, *ctx_or;
 	char	*ctx_cl, *ctx_cr;
-	int	*ctx_eno;
+	bool	*ctx_eno;
 	zval	*tmpl_param;
 ZEND_END_MODULE_GLOBALS(templates)
 

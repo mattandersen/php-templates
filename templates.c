@@ -107,7 +107,7 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("templates.ctx_or", TMPL_CTX_OR, PHP_INI_ALL, OnUpdateString, ctx_or, zend_templates_globals, templates_globals)
     STD_PHP_INI_ENTRY("templates.ctx_cl", TMPL_CTX_CL, PHP_INI_ALL, OnUpdateString, ctx_cl, zend_templates_globals, templates_globals)
     STD_PHP_INI_ENTRY("templates.ctx_cr", TMPL_CTX_CR, PHP_INI_ALL, OnUpdateString, ctx_cr, zend_templates_globals, templates_globals)
-    STD_PHP_INI_ENTRY("templates.ctx_eno", TMPL_CTX_ENO, PHP_INI_ALL, OnUpdateInt, ctx_eno, zend_templates_globals, templates_globals)
+    STD_PHP_INI_ENTRY("templates.ctx_eno", TMPL_CTX_ENO, PHP_INI_ALL, OnUpdateBool, ctx_eno, zend_templates_globals, templates_globals)
 PHP_INI_END()
 /* }}} */
 
@@ -201,7 +201,7 @@ PHP_RINIT_FUNCTION(templates) {
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_or", TMPL_G(ctx_or), strlen(TMPL_G(ctx_or)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cl", TMPL_G(ctx_cl), strlen(TMPL_G(ctx_cl)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cr", TMPL_G(ctx_cr), strlen(TMPL_G(ctx_cr)), 1);
-	add_assoc_int(TMPL_G(tmpl_param), "ctx_eno", TMPL_G(ctx_eno), strlen(TMPL_G(ctx_eno)), 1);
+	add_assoc_long(TMPL_G(tmpl_param), "ctx_eno", TMPL_G(ctx_eno));
 
 	return SUCCESS;
 }
@@ -382,7 +382,7 @@ zval			*iteration;
 	MAKE_STD_ZVAL(tmpl->ctx_or);	ZVAL_STRING(tmpl->ctx_or,		  TMPL_CTX_OR, 1);
 	MAKE_STD_ZVAL(tmpl->ctx_cl);	ZVAL_STRING(tmpl->ctx_cl,		  TMPL_CTX_CL, 1);
 	MAKE_STD_ZVAL(tmpl->ctx_cr);	ZVAL_STRING(tmpl->ctx_cr,		  TMPL_CTX_CR, 1);
-	MAKE_STD_ZVAL(tmpl->ctx_eno);	ZVAL_STRING(tmpl->ctx_eno,		  TMPL_CTX_ENO, 1);
+	MAKE_STD_ZVAL(tmpl->ctx_eno);	ZVAL_BOOL(tmpl->ctx_eno,		  TMPL_CTX_ENO);
 
 	MAKE_STD_ZVAL(tmpl->tags);
 	ALLOC_HASHTABLE_REL(Z_ARRVAL_P(tmpl->tags));

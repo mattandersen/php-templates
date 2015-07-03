@@ -44,9 +44,10 @@ extern zend_module_entry templates_module_entry;
 #	define TMPL_PHP_4_3		1
 #endif
 
-#define TMPL_VERSION		"1.7"
+#define TMPL_VERSION		"1.7.3"
 
 #define TMPL_CACHE_ENABLED	0
+
 
 #define TMPL_TAG_LEFT		"{"
 #define TMPL_TAG_RIGHT		"}"
@@ -55,6 +56,9 @@ extern zend_module_entry templates_module_entry;
 #define TMPL_CTX_OR			">"
 #define TMPL_CTX_CL			"</tmpl:"
 #define TMPL_CTX_CR			">"
+
+// Error on Context not found
+#define TMPL_CTX_ENO			1
 
 #define TMPL_CONFIG_TAG_NAME	"template"
 
@@ -141,6 +145,7 @@ typedef struct _t_template {
 	ulong			config_start, config_end;			/* <template> tag position */
 	zval			*tag_left, *tag_right;				/* tag delimiters */
 	zval			*ctx_ol, *ctx_or, *ctx_cl, *ctx_cr;	/* context delimiters */
+	zval			*ctx_eno;		/* throw error if context not found */
 	zval			*tags;			/* sd (single dimensioned) array : tags[path] = (t_tmpl_tag*) */
 	zval			*original;		/* string  : original template content */
 	zval			*path;			/* string : current path */
@@ -195,6 +200,7 @@ ZEND_BEGIN_MODULE_GLOBALS(templates)
 	char	*left, *right;
 	char	*ctx_ol, *ctx_or;
 	char	*ctx_cl, *ctx_cr;
+	bool	*ctx_eno;
 	zval	*tmpl_param;
 ZEND_END_MODULE_GLOBALS(templates)
 

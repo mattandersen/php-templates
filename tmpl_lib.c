@@ -489,7 +489,11 @@ zval** php_tmpl_get_iteration(t_template* tmpl, zval* path, int need_new) {
 	t_tmpl_tag		*tag;
 
 	if(FAILURE == zend_hash_find(Z_ARRVAL_P(tmpl->tags), ZV(path), ZL(path)+1, (void*)&ztag)) {
-		php_error(E_ERROR, "Undefined tag/context \"%s\"", ZV(path));
+		if (tmpl->ctx_eno) {
+			php_error(E_ERROR, "Undefined tag/context \"%s\"", ZV(path));
+		} else {
+			php_error(E_NOTICE, "Undefined tag/context \"%s\"", ZV(path));
+		}
 		return NULL;
 	}
 	tag = (t_tmpl_tag*)Z_STRVAL_PP(ztag);
@@ -915,8 +919,8 @@ int				tag_max, tag_cur;
 }
 
 void php_tmpl_process_param_array(t_template *tmpl, zval *zparam) {
-char*	param[] =		{"left",	"right",	"ctx_ol",	"ctx_or",	"ctx_cl",	"ctx_cr", NULL};
-uint	param_len[] =	{4,			5,			6,			6,			6,			6};
+char*	param[] =		{"left",	"right",	"ctx_ol",	"ctx_or",	"ctx_cl",	"ctx_cr",	"ctx_eno", NULL};
+uint	param_len[] =		{4,		5,		6,		6,		6,		6,		7};
 short	i;
 short	param_set;
 
@@ -944,6 +948,7 @@ uint			nam_len;
 				case 3 : TMPL_SET_PARAM(tmpl->ctx_or);
 				case 4 : TMPL_SET_PARAM(tmpl->ctx_cl);
 				case 5 : TMPL_SET_PARAM(tmpl->ctx_cr);
+				case 6 : TMPL_SET_PARAM(tmpl->ctx_eno);
 			}
 
 		}

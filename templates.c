@@ -201,7 +201,7 @@ PHP_RINIT_FUNCTION(templates) {
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_or", TMPL_G(ctx_or), strlen(TMPL_G(ctx_or)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cl", TMPL_G(ctx_cl), strlen(TMPL_G(ctx_cl)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cr", TMPL_G(ctx_cr), strlen(TMPL_G(ctx_cr)), 1);
-	add_assoc_long(TMPL_G(tmpl_param), "ctx_eno", TMPL_G(ctx_eno));
+	add_assoc_bool(TMPL_G(tmpl_param), "ctx_eno", TMPL_G(ctx_eno));
 
 	return SUCCESS;
 }

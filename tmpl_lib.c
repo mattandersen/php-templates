@@ -967,7 +967,7 @@ uint			nam_len;
 
 		if(0 == param_set) {
 			php_error(E_WARNING, "Ignoring unknown template configuration parameter \"%s\"", nam);
-		} else if(!Z_STRLEN_PP(val) && i != 6) {
+		} else if(!Z_STRLEN_PP(val) && i != 7) {
 			php_error(E_ERROR, "Can't continue with empty configuration parameter \"%s\"", nam);
 			return;
 		}

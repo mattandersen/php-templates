@@ -29,7 +29,7 @@
 #define PHP_TEMPLATES_API
 #endif
 
-# For bool
+/* For bool */
 #include <stdbool.h>
 
 #ifdef ZTS

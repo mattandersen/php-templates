@@ -112,7 +112,7 @@ register char	*start;
 		if(!(*p)) break; else nam[nam_len] = 0;
 
 		if('=' != *p) {
-			php_error(E_ERROR, "Invalid configuration tag parameter in template (line:%d)", php_tmpl_line_num(tmpl, p));
+			php_error(E_ERROR, "Invalid configuration tag parameter in template (line:%lu)", php_tmpl_line_num(tmpl, p));
 			TMPL_PRE_PARSE_CONFIG_CLEANUP;
 			return FAILURE;
 		}
@@ -125,7 +125,7 @@ register char	*start;
 		if(!(*p)) break; else val[val_len] = 0;
 
 		if(quote && quote != *p) {
-			php_error(E_ERROR, "Invalid parameter value in configuration tag in template (line:%d)", php_tmpl_line_num(tmpl, p));
+			php_error(E_ERROR, "Invalid parameter value in configuration tag in template (line:%lu)", php_tmpl_line_num(tmpl, p));
 			TMPL_PRE_PARSE_CONFIG_CLEANUP;
 			return FAILURE;
 		}
@@ -214,7 +214,11 @@ zval			**ztag;
 	buf_alloc = TMPL_MAX_TAG_LEN+4;
 	buf = (uchar*)emalloc(buf_alloc);
 	/* Searching algorythm will require larger buffer */
-	Z_STRVAL_P(tmpl->original) = (char*)erealloc(ZV(tmpl->original), 
+#ifdef TMPL_PHP_4_1
+	Z_STRVAL_P(tmpl->original) = (char*)erealloc(ZV(tmpl->original),
+#else
+	ZV(tmpl->original) = (char*)erealloc(ZV(tmpl->original),
+#endif
 		ZL(tmpl->original) + MAX(
 			ZL(tmpl->tag_left), MAX(
 				ZL(tmpl->tag_right), MAX(
@@ -308,7 +312,7 @@ zval			**ztag;
 			buf[buf_len] = 0;
 
 			if(SUCCESS == zend_hash_find(Z_ARRVAL_P(tmpl->tags), buf, buf_len+1, (void*)&ztag)) {
-				php_error(E_ERROR, "Duplicate context \"%s\" in template (line: %d)", buf, php_tmpl_line_num(tmpl, p));
+				php_error(E_ERROR, "Duplicate context \"%s\" in template (line: %lu)", buf, php_tmpl_line_num(tmpl, p));
 				TMPL_PRE_PARSE_CLEANUP;
 				return FAILURE;
 			}
@@ -359,7 +363,7 @@ zval			**ztag;
 		}
 	}
 	if(buf_len != 1) {
-		php_error(E_ERROR, "Can't continue with an unterminated context \"%s\" in template (line:%d)", buf, php_tmpl_line_num(tmpl, ZV(tmpl->original) + context->loff));
+		php_error(E_ERROR, "Can't continue with an unterminated context \"%s\" in template (line:%lu)", buf, php_tmpl_line_num(tmpl, ZV(tmpl->original) + context->loff));
 		TMPL_PRE_PARSE_CLEANUP;
 		return FAILURE;
 	}
@@ -489,7 +493,11 @@ zval** php_tmpl_get_iteration(t_template* tmpl, zval* path, int need_new) {
 	t_tmpl_tag		*tag;
 
 	if(FAILURE == zend_hash_find(Z_ARRVAL_P(tmpl->tags), ZV(path), ZL(path)+1, (void*)&ztag)) {
-		php_error(E_ERROR, "Undefined tag/context \"%s\"", ZV(path));
+		if (tmpl->ctx_eno) {
+			php_error(E_ERROR, "Undefined tag/context \"%s\"", ZV(path));
+		} else {
+			php_error(E_NOTICE, "Undefined tag/context \"%s\"", ZV(path));
+		}
 		return NULL;
 	}
 	tag = (t_tmpl_tag*)Z_STRVAL_PP(ztag);
@@ -697,7 +705,11 @@ ulong		key_tag_index;
 					/* Make a recursive call */
 					if(buf_alloc <= (unsigned)(ZL(path)+1+ZL(tag->name)+1)) {
 						while(buf_alloc <= (unsigned)(ZL(path)+1+ZL(tag->name)+1)) buf_alloc <<= 1;
+#ifdef TMPL_PHP_4_1
 						Z_STRVAL_P(new_path) = (char*)erealloc(ZV(new_path), buf_alloc);
+#else
+						ZV(new_path) = (char*)erealloc(ZV(new_path), buf_alloc);
+#endif
 					}
 					sprintf(ZV(new_path), (1 == ZL(path) && '/' == ZV(path)[0]) ? "%s%s" : "%s/%s", ZV(path), ZV(tag->name));
 					ZL(new_path) = ZL(path) + ZL(tag->name) + ((1 == ZL(path) && '/' == ZV(path)[0]) ? 0 : 1);
@@ -877,7 +889,11 @@ int				tag_max, tag_cur;
 			} else p = key;
 			ZVAL_STRINGL(new_value, p, (TMPL_LONG == mod) ? key_len-1 : key_len-1-(p-key), 1);
 			if((TMPL_TAG | TMPL_CONTEXT) == mask && TMPL_CONTEXT == tag->typ) {
+#ifdef TMPL_PHP_4_1
 				Z_STRVAL_P(new_value) = (char*)erealloc(ZV(new_value), ZL(new_value)+2);
+#else
+				ZV(new_value) = (char*)erealloc(ZV(new_value), ZL(new_value)+2);
+#endif
 				memcpy(ZV(new_value)+ZL(new_value), "/", 2);
 				ZL(new_value) += 1;
 			}
@@ -915,8 +931,8 @@ int				tag_max, tag_cur;
 }
 
 void php_tmpl_process_param_array(t_template *tmpl, zval *zparam) {
-char*	param[] =		{"left",	"right",	"ctx_ol",	"ctx_or",	"ctx_cl",	"ctx_cr", NULL};
-uint	param_len[] =	{4,			5,			6,			6,			6,			6};
+char*	param[] =		{"left",	"right",	"ctx_ol",	"ctx_or",	"ctx_cl",	"ctx_cr",	"ctx_eno", NULL};
+uint	param_len[] =		{4,		5,		6,		6,		6,		6,		7};
 short	i;
 short	param_set;
 
@@ -944,13 +960,14 @@ uint			nam_len;
 				case 3 : TMPL_SET_PARAM(tmpl->ctx_or);
 				case 4 : TMPL_SET_PARAM(tmpl->ctx_cl);
 				case 5 : TMPL_SET_PARAM(tmpl->ctx_cr);
+				case 6 : TMPL_SET_PARAM(tmpl->ctx_eno);
 			}
 
 		}
 
 		if(0 == param_set) {
 			php_error(E_WARNING, "Ignoring unknown template configuration parameter \"%s\"", nam);
-		} else if(!Z_STRLEN_PP(val) && i != 6) {
+		} else if(!Z_STRLEN_PP(val) && i != 7) {
 			php_error(E_ERROR, "Can't continue with empty configuration parameter \"%s\"", nam);
 			return;
 		}

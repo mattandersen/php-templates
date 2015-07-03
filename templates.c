@@ -48,7 +48,11 @@ extern PHPAPI int php_sock_close(int socket);
 int		le_templates;
 
 /* {{{ templates_functions[] */
+#ifdef TMPL_PHP_5_2
 zend_function_entry templates_functions[] = {
+#else
+function_entry templates_functions[] = {
+#endif
 	PHP_FE(tmpl_open,		NULL)
 	PHP_FE(tmpl_load,		NULL)
 	PHP_FE(tmpl_close,		NULL)
@@ -103,6 +107,7 @@ PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("templates.ctx_or", TMPL_CTX_OR, PHP_INI_ALL, OnUpdateString, ctx_or, zend_templates_globals, templates_globals)
     STD_PHP_INI_ENTRY("templates.ctx_cl", TMPL_CTX_CL, PHP_INI_ALL, OnUpdateString, ctx_cl, zend_templates_globals, templates_globals)
     STD_PHP_INI_ENTRY("templates.ctx_cr", TMPL_CTX_CR, PHP_INI_ALL, OnUpdateString, ctx_cr, zend_templates_globals, templates_globals)
+    STD_PHP_INI_ENTRY("templates.ctx_eno", TMPL_CTX_ENO, PHP_INI_ALL, OnUpdateBool, ctx_eno, zend_templates_globals, templates_globals)
 PHP_INI_END()
 /* }}} */
 
@@ -116,6 +121,7 @@ inline void php_tmpl_dtor(t_template* tmpl) {
 	zval_dtor(tmpl->ctx_or);	FREE_ZVAL(tmpl->ctx_or);
 	zval_dtor(tmpl->ctx_cl);	FREE_ZVAL(tmpl->ctx_cl);
 	zval_dtor(tmpl->ctx_cr);	FREE_ZVAL(tmpl->ctx_cr);
+	zval_dtor(tmpl->ctx_eno);	FREE_ZVAL(tmpl->ctx_eno);
 
 	zval_dtor(tmpl->tags);		FREE_ZVAL(tmpl->tags);
 	zval_dtor(tmpl->path);		FREE_ZVAL(tmpl->path);
@@ -143,6 +149,7 @@ static void php_templates_init_globals(zend_templates_globals *templates_globals
 	templates_globals->ctx_or = TMPL_CTX_OR;
 	templates_globals->ctx_cl = TMPL_CTX_CL;
 	templates_globals->ctx_cr = TMPL_CTX_CR;
+	templates_globals->ctx_eno = TMPL_CTX_ENO;
 	templates_globals->tmpl_param = NULL;
 }
 /* }}} */
@@ -194,6 +201,7 @@ PHP_RINIT_FUNCTION(templates) {
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_or", TMPL_G(ctx_or), strlen(TMPL_G(ctx_or)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cl", TMPL_G(ctx_cl), strlen(TMPL_G(ctx_cl)), 1);
 	add_assoc_stringl(TMPL_G(tmpl_param), "ctx_cr", TMPL_G(ctx_cr), strlen(TMPL_G(ctx_cr)), 1);
+	add_assoc_bool(TMPL_G(tmpl_param), "ctx_eno", TMPL_G(ctx_eno));
 
 	return SUCCESS;
 }
@@ -234,7 +242,7 @@ char	buf[TMPL_MAX_TAG_LEN*3];
 	DISPLAY_INI_ENTRIES();
 
 	php_info_print_table_start();
-	php_info_print_table_row(2,	"WWW", "http://php-templates.sourceforge.net/");
+	php_info_print_table_row(2,	"WWW", "https://github.com/sergey-dryabzhinsky/php-templates");
 	php_info_print_table_end();
 }
 /* }}} */
@@ -374,6 +382,7 @@ zval			*iteration;
 	MAKE_STD_ZVAL(tmpl->ctx_or);	ZVAL_STRING(tmpl->ctx_or,		  TMPL_CTX_OR, 1);
 	MAKE_STD_ZVAL(tmpl->ctx_cl);	ZVAL_STRING(tmpl->ctx_cl,		  TMPL_CTX_CL, 1);
 	MAKE_STD_ZVAL(tmpl->ctx_cr);	ZVAL_STRING(tmpl->ctx_cr,		  TMPL_CTX_CR, 1);
+	MAKE_STD_ZVAL(tmpl->ctx_eno);	ZVAL_BOOL(tmpl->ctx_eno,		  TMPL_CTX_ENO);
 
 	MAKE_STD_ZVAL(tmpl->tags);
 	ALLOC_HASHTABLE_REL(Z_ARRVAL_P(tmpl->tags));
@@ -714,6 +723,9 @@ PHP_FUNCTION(tmpl_get) {
 		}
 	} else {
 		php_error(E_NOTICE, "Tag/context \"%s\" doesn't exist", ZV(real_path));
+		if (!tmpl->ctx_eno) {
+			RETVAL_STRINGL("", 0, 1);
+		}
 	}
 
 	zval_dtor(real_path); FREE_ZVAL(real_path);
